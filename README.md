@@ -6,9 +6,7 @@ Software for requesting tokens on Aleo faucet
 
 >go mod download
 
-В adresses.txt ваши алео адреса, в tokens.txt - токены discord аккаунтов
-
-Настройте сон, использование прокси и количество потоков в congfig.py
+В adresses.txt ваши алео адреса, в tokens.txt - токены discord аккаунтов. Сон настраивается в .env
 
 # Media
 telegram - t.me/tripleshizu
