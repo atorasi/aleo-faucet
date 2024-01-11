@@ -5,25 +5,55 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
+	"net/url"
 	"path"
 	"strconv"
+	"strings"
 	"time"
+
+	ua "github.com/eddycjy/fake-useragent"
 )
 
-type DiscrodClient struct {
-	token  string
-	client http.Client
+type DiscordClient struct {
+	index    int
+	token    string
+	useProxy bool
+	client   http.Client
 }
 
-func NewClient(token string) DiscrodClient {
-	return DiscrodClient{
-		token:  token,
-		client: http.Client{},
+func NewClient(index int, token string, Proxy bool) DiscordClient {
+	return DiscordClient{
+		index:    index,
+		token:    token,
+		useProxy: Proxy,
+		client:   http.Client{},
 	}
 }
 
-func (c *DiscrodClient) SendMessage(channel_id, message string) error {
+func (c *DiscordClient) SetProxy(proxyList []string) error {
+	if c.useProxy {
+		parts := strings.Split(proxyList[c.index], "@")
+		logPass := strings.Split(parts[0], ":")
+		log.Println(parts)
+		log.Println(logPass)
+
+		proxy := &url.URL{
+			Scheme: "http",
+			User:   url.UserPassword(logPass[0], logPass[1]),
+			Host:   parts[1],
+		}
+		log.Printf("Acc.%v | Setup proxy: %v", c.index+1, proxy)
+
+		c.client.Transport = &http.Transport{
+			Proxy: http.ProxyURL(proxy),
+		}
+	}
+	return nil
+}
+
+func (c *DiscordClient) SendMessage(channel_id, message string) error {
 	url := "https://" + path.Join("discord.com/api/v9/channels/", channel_id, "/messages")
 
 	msg := Message{
@@ -48,7 +78,7 @@ func (c *DiscrodClient) SendMessage(channel_id, message string) error {
 	return nil
 }
 
-func (c *DiscrodClient) newMessage(msg []byte, url string) ([]byte, error) {
+func (c *DiscordClient) newMessage(msg []byte, url string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(msg))
 	if err != nil {
 		return nil, err
@@ -56,6 +86,7 @@ func (c *DiscrodClient) newMessage(msg []byte, url string) ([]byte, error) {
 
 	req.Header.Set("Authorization", c.token)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", ua.Computer())
 	resp, _ := c.client.Do(req)
 	if resp.StatusCode != 200 {
 		return nil, errors.New("bad request")
